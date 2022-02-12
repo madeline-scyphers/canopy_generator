@@ -16,5 +16,3 @@ It also includes profile vectors. Each profile vector is actually a matrix. The 
 An example (in Fortran 90) of how to turn these map matrices and profile vectors into 3-D arrays of LAD, stem volume and stem diameter is included in the file generate_volume_array.f90. This file needs modifications to your local environment in order to run, it reads some of the canopy arrays and generates a 3-D array for cummulative (from the canopy top going down) leaf-area dencity. It should not be used "as is" but can be used a guideline and example for extrapolating the compact canopy data into volumetric arrays. 
 
 For further assistance or questions, please contact Gil Bohrer
-
-# canopy_generator

@@ -1,14 +1,11 @@
 import numpy as np
 import pandas as pd
-from scipy.fft import fft2, ifft2
-from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 from canopy_types import ForestCanopy_data
 from plotting import plot_heatmap, plot_surface
-from utils import get_stem_diam_and_breast_height, Generate_PatchMap, Make_VCaGe_rand_field
+from utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_gen_rand_field
 
-# np.random.seed(42)
 
 nx = 250 # #grid points east-west
 ny = 250  # grid points south-north
@@ -35,7 +32,7 @@ filepath = "./OutFiles/"
 # path to location of output files
 
 
-def main():
+def generate_canopy():
     global PatchCutOff
     # Domain parameters:
 
@@ -67,7 +64,7 @@ def main():
         AcF = np.exp(
             -(1 / L) * (X ** 2 + Y ** 2) ** 0.5
         )  # regional (patch level) autocorrelation function. Could be replaced by an observed auto-correlation function, or patch type map
-        lambda_r = Make_VCaGe_rand_field(nx, ny, AcF)
+        lambda_r = make_can_gen_rand_field(nx, ny, AcF)
         patch = Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, npatch)
 
         # Allocate canopy properties params - These will be read by ForestCanopy_data
@@ -120,7 +117,7 @@ def main():
                 AcF[:, :, z],
             ) = canopy.export()
             # rand('state',sum(100*clock))  # randomize
-            lambdap[:, :, z] = Make_VCaGe_rand_field(nx, ny, AcF[:, :, z])
+            lambdap[:, :, z] = make_can_gen_rand_field(nx, ny, AcF[:, :, z])
 
             # xvec=reshape(lambdap(:,:,z),[nx*ny 1]);
             std = lambdap.std()
@@ -164,7 +161,7 @@ def main():
         canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy)
         StandDenc[0] = canopy.stand_density
         HDBHpar[0, :] = canopy.HDBHpar
-        lambdap = Make_VCaGe_rand_field(nx, ny, canopy.AcF)
+        lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF)
 
         std = lambdap.std()
         mu = lambdap.mean()
@@ -196,4 +193,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    generate_canopy()

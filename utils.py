@@ -13,6 +13,14 @@ def calculate_autocorrelation_function(nx, ny, Dx, Dy, L):
 
 
 def Find_StemDensityGridPT(StemDensityTPHa, Dx, nxy, Dy):
+    """
+    function [StemDensityGridPT]=Find_StemDensityGridPT(StemDensityTPHa,Dx,nxy,Dy)
+    Calculate a rounded coarse mesh resolution (in integer mesh-point number)
+    in which to place stems. 1 stem will be placed at each coarse mesh grid-cell
+    
+    Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
+
+    """
     StemDensityGridPT = 0
     i = 1
     while i < nxy:
@@ -29,6 +37,25 @@ def Find_StemDensityGridPT(StemDensityTPHa, Dx, nxy, Dy):
 
 
 def get_stem_diam_and_breast_height(patch, HDBHpar, Height, nx, Dx, ny, Dy, StandDenc, numpatch):
+    """
+    Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
+    Calculate stem locations and scale DBH for each stem based on canopy
+    height and allometric relationship between height and stem diameter and
+    breast height (DBH). Assumes the stem is under the tallest part of a subsection of the
+    canopy that represent a tree. These subsections are uniformly meshed (on a coarser mesh than the canopy domain) and
+    are approximately based on stand density.
+    
+    Input
+        patch - patch-type map (integer matrix [ny,nx])
+        HDBHpar - Patch specific allometric parameters to fit height and DBH (real matrix [numpatch,3])
+        Height - canopy top heights map (real matrix [ny,nx])
+        nx,Dx,ny,Dy - mesh dimensions (integer)
+        StandDenc - stand density Trees/Hectare (real vector [numpatch])
+        numpatch - # patch-types (integer)
+    
+    Output
+        DBH - map of DBH [m] (real matrix [ny,nx]). DBH=0 where there is no stem.
+    """
     DBH = np.zeros((ny, nx))
     for i in range(numpatch):
 
@@ -63,6 +90,20 @@ def get_stem_diam_and_breast_height(patch, HDBHpar, Height, nx, Dx, ny, Dy, Stan
 
 
 def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
+    """
+    Apply histogram filter to a random regional level (inter-patch) random field to generate patchtype map.
+    Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
+    
+    Input : 
+        patchtype - patch types (vector[numpatch])
+        lambda_r - a random regional level (inter-patch) random field (matrix[ny,nx])
+        ny,nx - # grid-points on x,y, axes (integer)
+        PatchCutOff - cumulative fraction of the area occupied by each patch type. Sorted at the same order as patchtype (vector[numpatch])  
+        numpatch - number of patch types
+    
+    Output
+        patch - a map of patch type indexes. The actual patch types in this map (at point x,y) is given by patchtype(patch(y,x)) 
+"""
 
     patch = np.zeros(lambda_r.shape, dtype=np.int8) - 1
     LAIvec = lambda_r.reshape((nx * ny, 1))
@@ -99,7 +140,24 @@ def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
     return patch
 
 
-def Make_VCaGe_rand_field(nx, ny, AcF):
+def make_can_gen_rand_field(nx, ny, AcF):
+    """
+    Generated a random phase, cyclic, 2-D field using FFT and an
+    autocorrelation matrix
+    Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
+    
+    Input :
+        X - meshed field of east-west coordinates (matrix[ny,nx]) 
+        Y - meshed field of south-north coordinates (matrix[ny,nx])
+        nx - # x grid points (integer)
+        ny - # y grid points (integer)
+        Dx - size [m] of x grid spacing (real)
+        Dy - size [m] of x grid spacing (real)
+        AcF - meshed field of auto-correlation function (matrix[ny,nx])
+    
+    Output:
+        lambda - a random phase, cyclic, 2-D field
+    """
     # Fourier trasnform the autocorrelation function
     ZF = fft2(AcF)
     # convert to real
