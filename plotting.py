@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import LinearLocator
+import numpy as np
+from generate_canopy import generate_canopy
 
 import seaborn as sns
 
@@ -36,9 +38,22 @@ def plot_heatmap(data, x, y, title, **kwargs):
 
 
 def plot_surface(x, y, z, title, **kwargs):
+    X, Y = np.meshgrid(x, y)
     fig = plt.figure()
     ax = fig.gca(projection="3d")
-    surf = ax.plot_surface(x, y, z, 
+    ax.plot_surface(X, Y, z, 
                            cmap=cm.viridis,
                            linewidth=0, antialiased=False, **kwargs)
     plt.title(title)
+
+
+def plot_generated_canopy(domain: np.ndarray):
+    ds = generate_canopy(domain)
+    
+    plot_heatmap(ds.lai, x=ds.x, y=ds.y, title="Total Lai")
+    plot_heatmap(ds.height, x=ds.x, y=ds.y, title="Height")
+    plot_surface(x=ds.x, y=ds.y, z=ds.height, title="Height")
+    plot_heatmap(ds.patch, x=ds.x, y=ds.y, title="Patch Type")
+    plot_heatmap(ds.DBHc, x=ds.x, y=ds.y, title="Diameter at Breast Height")
+    plt.show()
+    

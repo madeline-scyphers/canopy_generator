@@ -1,39 +1,39 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import xarray as xr
 
 from canopy_types import ForestCanopy_data
-from plotting import plot_heatmap, plot_surface
 from utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_gen_rand_field
 
 
-nx = 250 # #grid points east-west
-ny = 250  # grid points south-north
-Dx = 5.0  # horizontal grid-mesh size [m]. LoadCanopy_Profiles.m assumes Dx==Dy, this can be easily modified
-Dy = Dx
-Dz = 3.0  # vertical grid-mesh size [m], needed to find the highest point in the canopy, in terms of # grid-points, which is sometimes used to dimensionalize input arrays in a program that might use this canopy
-
-# Landscape parameters:
-L = 10.0  # length-scale of discontinuity [m] that characterizes patch-type distribution (regioal lenght-scale)
-
-# patch params
-# PatchCutOff=np.array([0.9, 0.1]) # vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!!
-# patchtype=np.array([4, 2]) # patch type code to patch canopy properties data in ForestCanopy_data.m
-# # The user should add his/her patch types in ForestCanopy_data.m, as needed for their symulations and as observed in their environments
-
-PatchCutOff = np.array(
-    [0.9, 0.1]
-)  # vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!!
-patchtype = np.array([1, 2])  # patch type code to patch canopy properties data in ForestCanopy_data.m
-# The user should add his/he
-
-# other params:
-filepath = "./OutFiles/"
-# path to location of output files
 
 
-def generate_canopy():
-    global PatchCutOff
+def generate_canopy(domain: np.ndarray):
+    ny, nx, *_ = domain.shape
+    # nx = 250 # #grid points east-west
+    # ny = 250  # grid points south-north
+    Dx = 5.0  # horizontal grid-mesh size [m]. LoadCanopy_Profiles.m assumes Dx==Dy, this can be easily modified
+    Dy = Dx
+    Dz = 3.0  # vertical grid-mesh size [m], needed to find the highest point in the canopy, in terms of # grid-points, which is sometimes used to dimensionalize input arrays in a program that might use this canopy
+
+    # Landscape parameters:
+    L = 10.0  # length-scale of discontinuity [m] that characterizes patch-type distribution (regioal lenght-scale)
+
+    # patch params
+    # PatchCutOff=np.array([0.9, 0.1]) # vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!!
+    # patchtype=np.array([4, 2]) # patch type code to patch canopy properties data in ForestCanopy_data.m
+    # # The user should add his/her patch types in ForestCanopy_data.m, as needed for their symulations and as observed in their environments
+
+    PatchCutOff = np.array(
+        [0.9, 0.1]
+    )  # vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!!
+    patchtype = np.array([1, 4])  # patch type code to patch canopy properties data in ForestCanopy_data.m
+    # The user should add his/he
+
+    # other params:
+    filepath = "./OutFiles/"
+    # path to location of output files`
+    
     # Domain parameters:
 
     # *******************************************************************
@@ -50,8 +50,6 @@ def generate_canopy():
             PatchCutOff[p] = PatchCutOff[p - 1] + PatchCutOff[p]
 
     # build meshed-grid
-    # x = np.arange(nx) * Dx
-    # y = np.arange(ny) * Dy
     x = np.arange(-(nx-1)/2,(nx - 1)/2 + 1)*Dx
     y = np.arange(-(ny-1)/2,(ny- 1)/2 + 1)*Dy
     X, Y = np.meshgrid(x, y)
@@ -64,7 +62,7 @@ def generate_canopy():
         AcF = np.exp(
             -(1 / L) * (X ** 2 + Y ** 2) ** 0.5
         )  # regional (patch level) autocorrelation function. Could be replaced by an observed auto-correlation function, or patch type map
-        lambda_r = make_can_gen_rand_field(nx, ny, AcF)
+        lambda_r = make_can_gen_rand_field(nx, ny, AcF, domain)
         patch = Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, npatch)
 
         # Allocate canopy properties params - These will be read by ForestCanopy_data
@@ -117,11 +115,11 @@ def generate_canopy():
                 AcF[:, :, z],
             ) = canopy.export()
             # rand('state',sum(100*clock))  # randomize
-            lambdap[:, :, z] = make_can_gen_rand_field(nx, ny, AcF[:, :, z])
+            lambdap[:, :, z] = make_can_gen_rand_field(nx, ny, AcF[:, :, z], domain)
 
             # xvec=reshape(lambdap(:,:,z),[nx*ny 1]);
-            std = lambdap.std()
-            mu = lambdap.mean()
+            std = np.nanstd(lambdap)
+            mu = np.nanmean(lambdap)
 
             # scale by mean and std
             l_minus_mean = lambdap[:, :, z] - mu
@@ -161,7 +159,7 @@ def generate_canopy():
         canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy)
         StandDenc[0] = canopy.stand_density
         HDBHpar[0, :] = canopy.HDBHpar
-        lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF)
+        lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF, domain)
 
         std = lambdap.std()
         mu = lambdap.mean()
@@ -182,15 +180,65 @@ def generate_canopy():
     canopy.CSProfile = canopy.CSProfile.T
     canopy.LAD = canopy.LAD.T
     canopy.zcm = canopy.zcm.T
+    
+    
+    ds = convert_to_xarray(TotLAIc, Heightc, patch, TotFluxc, DBHc, x, y)
 
-    plot_heatmap(TotLAIc, x=x, y=y, title="Total Lai")
-    plot_heatmap(Heightc, x=x, y=y, title="Height")
-    plot_surface(x=X, y=Y, z=Heightc, title="Height")
-    plot_heatmap(patch, x=x, y=y, title="Patch Type")
-    plot_heatmap(DBHc, x=x, y=y, title="Diameter at Breast Height")
-    plt.show()
+    return ds
 
 
+def convert_to_xarray(lai, height, patch, flux, DBHc, x, y):
+    lai_ = xr.DataArray(
+        data=lai,
+        dims=["y", "x"], 
+        coords=dict(
+            y=y,
+            x=x,
+        ),
+        attrs=dict(
+            long_name="Total Lai",
+            units="m^2 / m^2",))
+    height_ = xr.DataArray(
+        data=height,
+        dims=["y", "x"], 
+        coords=dict(
+            y=y,
+            x=x,
+        ),
+        attrs=dict(
+            long_name="Total height",
+            units="m",))
+    patch_ = xr.DataArray(
+        data=patch,
+        dims=["y", "x"], 
+        coords=dict(
+            y=y,
+            x=x,
+        ),
+        attrs=dict(
+            long_name="patch categories",))
+    flux_ = xr.DataArray(
+        data=flux,
+        dims=["y", "x"], 
+        coords=dict(
+            y=y,
+            x=x,
+        ),
+        attrs=dict(
+            long_name="Total flux"))
+    DBHc_ = xr.DataArray(
+        data=DBHc,
+        dims=["y", "x"], 
+        coords=dict(
+            y=y,
+            x=x,
+        ),
+        attrs=dict(
+            long_name="Stem diameter and breast height",
+            units="m",))
+    ds = xr.Dataset(dict(lai=lai_, height=height_, patch=patch_, flux=flux_, DBHc=DBHc_))
+    return ds
+    
 
 if __name__ == "__main__":
     generate_canopy()

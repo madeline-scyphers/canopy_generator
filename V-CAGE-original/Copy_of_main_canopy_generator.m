@@ -17,8 +17,8 @@
 
 %****************************** input parameters ***************************
 % Domain parameters:
-nx=250; % #grid points east-west 
-ny=250;  % #grid points south-north                
+nx=5; % #grid points east-west 
+ny=6; % #grid points south-north                
 Dx = 5.0; % horizontal grid-mesh size [m]. LoadCanopy_Profiles.m assumes Dx==Dy, this can be easily modified
 Dy = Dx;
 Dz= 3.0;  % vertical grid-mesh size [m], needed to find the highest point in the canopy, in terms of # grid-points, which is sometimes used to dimensionalize input arrays in a program that might use this canopy 
@@ -28,8 +28,11 @@ L=10.0; % length-scale of discontinuity [m] that characterizes patch-type distri
 
 %patch params
 PatchCutOff=[0.9 0.1]; %vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!! 
-patchtype=[1 2]; %patch type code to patch canopy properties data in ForestCanopy_data.m 
+patchtype=[1 3]; %patch type code to patch canopy properties data in ForestCanopy_data.m 
 %The user should add his/her patch types in ForestCanopy_data.m, as needed for their symulations and as observed in their environments 
+
+%PatchCutOff=[.6 .4];
+%patchtype=[1 2];
 
 
 %other params:

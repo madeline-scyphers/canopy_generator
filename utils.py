@@ -106,7 +106,9 @@ def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
 """
 
     patch = np.zeros(lambda_r.shape, dtype=np.int8) - 1
-    LAIvec = lambda_r.reshape((nx * ny, 1))
+    # patch = - lambda_r / lambda_r
+    # LAIvec = lambda_r.reshape((nx * ny, 1))
+    LAIvec = lambda_r[~np.isnan(lambda_r)]
     values, bins = np.histogram(LAIvec, bins=100)
     N, Lx = values, bins  # TODO remove
 
@@ -126,7 +128,7 @@ def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
     dj = 1
     while dj < numpatch:
         cumulat = cumulat + N[h]
-        if cumulat > (PatchCutOff[dj - 1] * nx * ny):
+        if cumulat > (PatchCutOff[dj - 1] * len(LAIvec)):
             px[dj] = Lx[h]
             dj = dj + 1
         h = h + 1
@@ -140,7 +142,7 @@ def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
     return patch
 
 
-def make_can_gen_rand_field(nx, ny, AcF):
+def make_can_gen_rand_field(nx, ny, AcF, domain):
     """
     Generated a random phase, cyclic, 2-D field using FFT and an
     autocorrelation matrix
@@ -171,4 +173,7 @@ def make_can_gen_rand_field(nx, ny, AcF):
     Z2 = ifft2(ZF3)
     # make real
     lambda_ = abs(Z2)
+    
+    # remove indexese not marked on domain
+    lambda_ = lambda_ * domain
     return lambda_
