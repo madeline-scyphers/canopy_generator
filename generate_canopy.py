@@ -205,12 +205,12 @@ def convert_to_xarray(lai, height, patch, flux, DBHc, total_lad, x, y, zlad):
             long_name="Total Lai",
             units="m^2 / m^2",))
     lad_ = xr.DataArray(
-        data=total_lad,
-        dims=["x", "y", "zlad",], 
+        data=total_lad.T,
+        dims=["zlad", "y", "x"], 
         coords=dict(
-            x=x,
-            y=y,
             zlad=zlad,
+            y=y,
+            x=x,
         ),
         attrs=dict(
             long_name="leaf area density",
