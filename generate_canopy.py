@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-from canopy_types import ForestCanopy_data
-from utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_gen_rand_field
+from .canopy_types import ForestCanopy_data
+from .utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_gen_rand_field
 
 
 
 
-def generate_canopy(domain: np.ndarray):
-    ny, nx, *_ = domain.shape
+def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, mean_lai: float | np.ndarray = 2):
+    zlad = zlad if zlad is not None else np.arange(0, 8)
+    
+    nx, ny, *_ = domain.shape
     # nx = 250 # #grid points east-west
     # ny = 250  # grid points south-north
     Dx = 5.0  # horizontal grid-mesh size [m]. LoadCanopy_Profiles.m assumes Dx==Dy, this can be easily modified
@@ -25,9 +29,9 @@ def generate_canopy(domain: np.ndarray):
     # # The user should add his/her patch types in ForestCanopy_data.m, as needed for their symulations and as observed in their environments
 
     PatchCutOff = np.array(
-        [0.9, 0.1]
+        [1]
     )  # vector- portion of the area with each patch type -in this example; 90% Spring hardwood, 10% grass; Must total to 1!!!
-    patchtype = np.array([1, 4])  # patch type code to patch canopy properties data in ForestCanopy_data.m
+    patchtype = np.array([1])  # patch type code to patch canopy properties data in ForestCanopy_data.m
     # The user should add his/he
 
     # other params:
@@ -52,7 +56,7 @@ def generate_canopy(domain: np.ndarray):
     # build meshed-grid
     x = np.arange(-(nx-1)/2,(nx - 1)/2 + 1)*Dx
     y = np.arange(-(ny-1)/2,(ny- 1)/2 + 1)*Dy
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing="ij")
 
     StandDenc = np.zeros((npatch, 1))
     HDBHpar = np.zeros((npatch, 3))
@@ -63,7 +67,7 @@ def generate_canopy(domain: np.ndarray):
             -(1 / L) * (X ** 2 + Y ** 2) ** 0.5
         )  # regional (patch level) autocorrelation function. Could be replaced by an observed auto-correlation function, or patch type map
         lambda_r = make_can_gen_rand_field(nx, ny, AcF, domain)
-        patch = Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, npatch)
+        patch = Generate_PatchMap(patchtype, lambda_r, nx, ny, PatchCutOff, npatch)
 
         # Allocate canopy properties params - These will be read by ForestCanopy_data
         avg_lai = np.zeros((npatch, 1))
@@ -85,17 +89,17 @@ def generate_canopy(domain: np.ndarray):
         #  normalizations
         CSProf = np.zeros((npatch, 101))
         LAD = np.zeros((npatch, 101))
-        AcF = np.zeros((ny, nx, npatch))
-        lambdap = np.zeros((ny, nx, npatch))
-        TotLAI = np.zeros((ny, nx, npatch))
-        Height = np.zeros((ny, nx, npatch))
-        Bowen = np.zeros((ny, nx, npatch))
-        TotFlux = np.zeros((ny, nx, npatch))
-        Albedo = np.zeros((ny, nx, npatch))
+        AcF = np.zeros((nx, ny, npatch))
+        lambdap = np.zeros((nx, ny, npatch))
+        TotLAI = np.zeros((nx, ny, npatch))
+        Height = np.zeros((nx, ny, npatch))
+        Bowen = np.zeros((nx, ny, npatch))
+        TotFlux = np.zeros((nx, ny, npatch))
+        Albedo = np.zeros((nx, ny, npatch))
 
         # generate a random canopy field for each patch type
         for z in range(npatch):
-            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy)
+            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy, mean_lai, zlad)
             (
                 CSProf[z, :],
                 HDBHpar[z, :],
@@ -139,12 +143,12 @@ def generate_canopy(domain: np.ndarray):
                 Albedo[:, :, z] = np.maximum(0, (l_minus_mean * (sig_albedo[z] / std) + avg_albedo[z]))
 
         # compose a combined canopy usiing landscape patch map
-        TotLAIc = np.zeros((ny, nx))
-        Heightc = np.zeros((ny, nx))
+        TotLAIc = np.zeros((nx, ny))
+        Heightc = np.zeros((nx, ny))
 
-        Bowenc = np.zeros((ny, nx))
-        TotFluxc = np.zeros((ny, nx))
-        Albedoc = np.zeros((ny, nx))
+        Bowenc = np.zeros((nx, ny))
+        TotFluxc = np.zeros((nx, ny))
+        Albedoc = np.zeros((nx, ny))
 
         for xp in range(nx):
             for yp in range(ny):
@@ -155,8 +159,8 @@ def generate_canopy(domain: np.ndarray):
                 Albedoc[yp, xp] = Albedo[yp, xp, patch[yp, xp]]
 
     else:
-        patch = np.ones((ny, nx))
-        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy)
+        patch = np.ones((nx, ny))
+        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy, mean_lai, zlad)
         StandDenc[0] = canopy.stand_density
         HDBHpar[0, :] = canopy.HDBHpar
         lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF, domain)
@@ -164,7 +168,9 @@ def generate_canopy(domain: np.ndarray):
         std = lambdap.std()
         mu = lambdap.mean()
 
+        vert_lambdap = np.where(lambdap != 0, lambdap - mu + 1, 0)
         # re-scale by mean and variance
+        total_lad = (vert_lambdap[:, :, None] * canopy.lad[None, None, :])
         TotLAIc = np.maximum(0, ((lambdap - mu) * (canopy.sig_lai / std) + canopy.avg_lai))
         Heightc = np.maximum(0, ((lambdap - mu) * (canopy.sigH / std) + canopy.avgH))
         Bowenc = np.maximum(0, ((lambdap - mu) * (canopy.sig_bowen / std) + canopy.bowen_ratio))
@@ -182,61 +188,72 @@ def generate_canopy(domain: np.ndarray):
     canopy.zcm = canopy.zcm.T
     
     
-    ds = convert_to_xarray(TotLAIc, Heightc, patch, TotFluxc, DBHc, x, y)
+    ds = convert_to_xarray(TotLAIc, Heightc, patch, TotFluxc, DBHc, total_lad, x, y, zlad, )
 
     return ds
 
 
-def convert_to_xarray(lai, height, patch, flux, DBHc, x, y):
+def convert_to_xarray(lai, height, patch, flux, DBHc, total_lad, x, y, zlad):
     lai_ = xr.DataArray(
         data=lai,
-        dims=["y", "x"], 
+        dims=["x", "y"], 
         coords=dict(
-            y=y,
             x=x,
+            y=y,
         ),
         attrs=dict(
             long_name="Total Lai",
             units="m^2 / m^2",))
+    lad_ = xr.DataArray(
+        data=total_lad,
+        dims=["x", "y", "zlad",], 
+        coords=dict(
+            x=x,
+            y=y,
+            zlad=zlad,
+        ),
+        attrs=dict(
+            long_name="leaf area density",
+            units="m2/m3",))
     height_ = xr.DataArray(
         data=height,
-        dims=["y", "x"], 
+        dims=["x", "y"], 
         coords=dict(
-            y=y,
             x=x,
+            y=y,
         ),
         attrs=dict(
             long_name="Total height",
             units="m",))
     patch_ = xr.DataArray(
         data=patch,
-        dims=["y", "x"], 
+        dims=["x", "y"], 
         coords=dict(
-            y=y,
             x=x,
+            y=y,
         ),
         attrs=dict(
             long_name="patch categories",))
     flux_ = xr.DataArray(
         data=flux,
-        dims=["y", "x"], 
+        dims=["x", "y"], 
         coords=dict(
-            y=y,
             x=x,
+            y=y,
         ),
         attrs=dict(
             long_name="Total flux"))
     DBHc_ = xr.DataArray(
         data=DBHc,
-        dims=["y", "x"], 
+        dims=["x", "y"], 
         coords=dict(
-            y=y,
             x=x,
+            y=y,
         ),
         attrs=dict(
             long_name="Stem diameter and breast height",
             units="m",))
-    ds = xr.Dataset(dict(lai=lai_, height=height_, patch=patch_, flux=flux_, DBHc=DBHc_))
+    ds = xr.Dataset(dict(lai=lai_, lad=lad_, height=height_, patch=patch_, flux=flux_, DBHc=DBHc_))
     return ds
     
 

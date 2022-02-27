@@ -39,7 +39,7 @@ if ptype==1 % 1=Duke forest loblolly pine December 2001,
                                     %regression parameters of the function: log10(height[cm])=b1*log10(DBH[cm])+b0
                                     % b00 is used to cancel out non woody vegetation (i.e. make grass stems = 0)
                                     
-    LAI =([0.0 0.007114 0.010536 0.010461 0.022015 0.030084 0.046287 0.228772 0.091491...  % TODO madeline This needs to be normalized so it integrates to 1
+    LAI =([0.0 0.007114 0.010536 0.010461 0.022015 0.030084 0.046287 0.228772 0.091491...  
             0.407698 0.099484, 0.023835 0.014457 0.003917 0.003848 0.0]);%vertical profile of LAI in observed points
     zlai =(0:15);     %measurement heights of points in LAI 
    

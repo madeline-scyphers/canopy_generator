@@ -6,7 +6,7 @@ from scipy.stats import norm
 def calculate_autocorrelation_function(nx, ny, Dx, Dy, L):
     x = np.arange(-(nx - 1) / 2, (nx - 1) / 2 + 1) * Dx
     y = np.arange(-(ny - 1) / 2, (ny - 1) / 2 + 1) * Dy
-    [X, Y] = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing="ij")
 
     AcF = np.exp(-(1 / L) * (X ** 2 + Y ** 2) ** 0.5)
     return AcF
@@ -56,12 +56,12 @@ def get_stem_diam_and_breast_height(patch, HDBHpar, Height, nx, Dx, ny, Dy, Stan
     Output
         DBH - map of DBH [m] (real matrix [ny,nx]). DBH=0 where there is no stem.
     """
-    DBH = np.zeros((ny, nx))
+    DBH = np.zeros((nx, ny))
     for i in range(numpatch):
 
         cjxmax = 1
         cjymax = 1
-        StemDensityGridPT = Find_StemDensityGridPT(StandDenc[i], Dx, min(ny, nx), Dy)
+        StemDensityGridPT = Find_StemDensityGridPT(StandDenc[i], Dx, min(nx, ny), Dy)
         for ix in range(nx // StemDensityGridPT + 1):
             for iy in range(ny // StemDensityGridPT + 1):
                 maxH = 0
@@ -71,25 +71,25 @@ def get_stem_diam_and_breast_height(patch, HDBHpar, Height, nx, Dx, ny, Dy, Stan
                     if cjx <= len(Height[0, :]):
                         for jy in range(StemDensityGridPT):
                             cjy = (iy - 1) * StemDensityGridPT + jy
-                            if cjy <= len(Height[:, 0]) and patch[cjy, cjx] == i:
+                            if cjy <= len(Height[:, 0]) and patch[cjx, cjy] == i:
                                 emptyind = 0
-                                if Height[cjy, cjx] > maxH:
-                                    maxH = Height[cjy, cjx]
+                                if Height[cjx, cjy] > maxH:
+                                    maxH = Height[cjx, cjy]
                                     cjxmax = cjx
                                     cjymax = cjy
                 if emptyind == 0:
                     # scale DBH with Height, based on Naidu et al 98 can j for res - this function should be replaced
                     # if the user has another observed allometric indication of stem diameter
-                    DBH[cjymax, cjxmax] = (
+                    DBH[cjxmax, cjymax] = (
                         (StandDenc[i] / 10000 * StemDensityGridPT ** 2)
                         * HDBHpar[i, 2]
-                        * (10 ** ((np.log10(Height[cjymax, cjxmax] * 100) - HDBHpar[i, 1]) / HDBHpar[i, 0]) / 100)
+                        * (10 ** ((np.log10(Height[cjxmax, cjymax] * 100) - HDBHpar[i, 1]) / HDBHpar[i, 0]) / 100)
                     )
 
     return DBH
 
 
-def Generate_PatchMap(patchtype, lambda_r, ny, nx, PatchCutOff, numpatch):
+def Generate_PatchMap(patchtype, lambda_r, nx, ny, PatchCutOff, numpatch):
     """
     Apply histogram filter to a random regional level (inter-patch) random field to generate patchtype map.
     Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
@@ -166,7 +166,7 @@ def make_can_gen_rand_field(nx, ny, AcF, domain):
     ZF2 = abs(ZF)
 
     # generate random phase matrix from uniform [0,1] to uniform [-pi,pi]
-    R = 2 * np.pi * (np.random.rand(ny, nx) - 0.5)
+    R = 2 * np.pi * (np.random.rand(nx, ny) - 0.5)
     # compute complex amplitudes from real with random phase
     ZF3 = ZF2 * np.exp(1j * R)
     # inverse transform

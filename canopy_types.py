@@ -4,7 +4,7 @@ import numpy as np
 
 from scipy import interpolate
 
-from utils import calculate_autocorrelation_function
+from .utils import calculate_autocorrelation_function
 
 
 @dataclass
@@ -42,11 +42,15 @@ class CanopyType:
         self.sig_albedo = self.sig_albedo * (self.sigH / self.sig_control)
         self.sig_bowen = self.sig_bowen * (self.sigH / self.sig_control)
 
+    def set_lad(self, zlad):
+        lad = interpolate.interp1d(np.arange(0, self.LAI.size), self.LAI)(zlad)
+        self.lad = (lad / lad.sum()) * self.avg_lai
+
     def normalize_lai(self, canopytopCM, zcm):
         self.LAI = self.LAI / self.LAI.sum()
         lencm = np.ceil(max(self.zlai) * 100) / canopytopCM
-        LADcm = interpolate.interp1d((self.zlai / lencm), self.LAI)(zcm)
-        self.LAD = LADcm / sum(LADcm)
+        self.LADcm = interpolate.interp1d((self.zlai / lencm), self.LAI)(zcm)
+        self.LAD = self.LADcm / sum(self.LADcm)
 
     def calculate_autocorrelation_function(self, nx, ny, Dx, Dy):
         self.AcF = calculate_autocorrelation_function(nx, ny, Dx, Dy, self.autocorrelation_length)
@@ -289,7 +293,7 @@ duke_hardwood_spring = CanopyType(
 canopy_map = {1: duke_loblolly_pine, 2: grass_pitch, 3: duke_hardwood_winter, 4: duke_hardwood_spring}
 
 
-def ForestCanopy_data(ptype, nx, Dx, ny, Dy) -> CanopyType:
+def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad) -> CanopyType:
     """
     [CSProfile, LADcm,zcm, avg, avgH, sig, sigH, StandDencity, AcFp]=ForestCanopy_data(ptype,canopytopCM, nx, Dx, ny, Dy)
     
@@ -326,4 +330,5 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy) -> CanopyType:
     canopy_type.normalize_lai(canopytopCM=canopytopCM, zcm=zcm)
     canopy_type.calculate_autocorrelation_function(nx=nx, ny=ny, Dx=Dx, Dy=Dy)
     canopy_type.calculate_csprofile(canopytopCM=canopytopCM, zcm=zcm)
+    canopy_type.set_lad(zlad)
     return canopy_type
