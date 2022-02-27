@@ -42,8 +42,8 @@ class CanopyType:
         self.sig_albedo = self.sig_albedo * (self.sigH / self.sig_control)
         self.sig_bowen = self.sig_bowen * (self.sigH / self.sig_control)
 
-    def set_lad(self, zlad):
-        lad = interpolate.interp1d(np.arange(0, self.LAI.size), self.LAI)(zlad)
+    def set_lad(self, zlad, dz):
+        lad = interpolate.interp1d(np.arange(0, self.LAI.size * dz, dz), self.LAI)(zlad)
         self.lad = (lad / lad.sum()) * self.avg_lai
 
     def normalize_lai(self, canopytopCM, zcm):
@@ -293,7 +293,7 @@ duke_hardwood_spring = CanopyType(
 canopy_map = {1: duke_loblolly_pine, 2: grass_pitch, 3: duke_hardwood_winter, 4: duke_hardwood_spring}
 
 
-def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad) -> CanopyType:
+def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
     """
     [CSProfile, LADcm,zcm, avg, avgH, sig, sigH, StandDencity, AcFp]=ForestCanopy_data(ptype,canopytopCM, nx, Dx, ny, Dy)
     
@@ -330,5 +330,5 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad) -> CanopyType:
     canopy_type.normalize_lai(canopytopCM=canopytopCM, zcm=zcm)
     canopy_type.calculate_autocorrelation_function(nx=nx, ny=ny, Dx=Dx, Dy=Dy)
     canopy_type.calculate_csprofile(canopytopCM=canopytopCM, zcm=zcm)
-    canopy_type.set_lad(zlad)
+    canopy_type.set_lad(zlad, dz)
     return canopy_type

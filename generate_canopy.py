@@ -10,8 +10,8 @@ from .utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_
 
 
 
-def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, mean_lai: float | np.ndarray = 2):
-    zlad = zlad if zlad is not None else np.arange(0, 8)
+def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3,  mean_lai: float | np.ndarray = 2):
+    zlad = zlad if zlad is not None else np.arange(0, 8, 3)
     
     nx, ny, *_ = domain.shape
     # nx = 250 # #grid points east-west
@@ -99,7 +99,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, mean_lai: float
 
         # generate a random canopy field for each patch type
         for z in range(npatch):
-            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy, mean_lai, zlad)
+            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy, mean_lai, zlad, dz)
             (
                 CSProf[z, :],
                 HDBHpar[z, :],
@@ -160,7 +160,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, mean_lai: float
 
     else:
         patch = np.ones((nx, ny))
-        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy, mean_lai, zlad)
+        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy, mean_lai, zlad, dz)
         StandDenc[0] = canopy.stand_density
         HDBHpar[0, :] = canopy.HDBHpar
         lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF, domain)
