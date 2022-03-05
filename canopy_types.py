@@ -42,9 +42,9 @@ class CanopyType:
         self.sig_albedo = self.sig_albedo * (self.sigH / self.sig_control)
         self.sig_bowen = self.sig_bowen * (self.sigH / self.sig_control)
 
-    def set_lad(self, zlad, dz):
+    def set_lad(self, mean_lai, zlad, dz):
         lad = interpolate.interp1d(np.arange(0, self.LAI.size * dz, dz), self.LAI)(zlad)
-        self.lad = (lad / lad.sum()) * self.avg_lai
+        self.lad = (lad / lad.sum()) * mean_lai
 
     def normalize_lai(self, canopytopCM, zcm):
         self.LAI = self.LAI / self.LAI.sum()
@@ -330,5 +330,5 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
     canopy_type.normalize_lai(canopytopCM=canopytopCM, zcm=zcm)
     canopy_type.calculate_autocorrelation_function(nx=nx, ny=ny, Dx=Dx, Dy=Dy)
     canopy_type.calculate_csprofile(canopytopCM=canopytopCM, zcm=zcm)
-    canopy_type.set_lad(zlad, dz)
+    canopy_type.set_lad(mean_lai, zlad, dz)
     return canopy_type
