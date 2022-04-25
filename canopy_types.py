@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-
 from scipy import interpolate
 
 from .utils import calculate_autocorrelation_function
@@ -296,7 +295,7 @@ canopy_map = {1: duke_loblolly_pine, 2: grass_pitch, 3: duke_hardwood_winter, 4:
 def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
     """
     [CSProfile, LADcm,zcm, avg, avgH, sig, sigH, StandDencity, AcFp]=ForestCanopy_data(ptype,canopytopCM, nx, Dx, ny, Dy)
-    
+
     Copyright: Gil Bohrer and Roni avissar, Duke University, 2006
     User defined function that returns the normalized parameters of the
     canopy. This function gets a canopy code (patch type code) and return the
@@ -304,7 +303,7 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
     in the FACE site in Duke Forest in Dec/2001, and an arbitrary grass
     patch.
 
-    Input 
+    Input
         ptype - code for patch type (integer)
         nx, Dx, ny, Dy - grid mesh dimensions (integer)
 
@@ -313,12 +312,12 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
         LADcm - normalized (Tot LAI / m ) vertical profile at the normalized heights zcm
         zcm - normalized heights [m/m].
         avg - observed mean total (ground accumulated) LAI [m^2 leaf/m^2 ground]
-        avgH - observed mean canopy top height [m] 
+        avgH - observed mean canopy top height [m]
         sig - std of avg
         sigH - std of sigH
-        StandDencity - number of stems / hectare 
+        StandDencity - number of stems / hectare
         AcFp - autocorrelation function of canopy structure
-    
+
     """
     canopytopCM = 100  # number of intervals in normalized LAD profile - The normalized profile is 1 m high, and therefore, canopytopCM=100 defines the profile every 1 cm.
     zcm = np.arange(0, canopytopCM + 1) / canopytopCM  # normalized 0-1 [m] heights in 1 cm intervals

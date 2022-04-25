@@ -5,14 +5,16 @@ import pandas as pd
 import xarray as xr
 
 from .canopy_types import ForestCanopy_data
-from .utils import get_stem_diam_and_breast_height, Generate_PatchMap, make_can_gen_rand_field
+from .utils import (
+    Generate_PatchMap,
+    get_stem_diam_and_breast_height,
+    make_can_gen_rand_field,
+)
 
 
-
-
-def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3,  mean_lai: float | np.ndarray = 2):
+def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, mean_lai: float | np.ndarray = 2):
     zlad = zlad if zlad is not None else np.arange(0, 8, 3)
-    
+
     nx, ny, *_ = domain.shape
     # nx = 250 # #grid points east-west
     # ny = 250  # grid points south-north
@@ -37,7 +39,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
     # other params:
     filepath = "./OutFiles/"
     # path to location of output files`
-    
+
     # Domain parameters:
 
     # *******************************************************************
@@ -54,8 +56,8 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
             PatchCutOff[p] = PatchCutOff[p - 1] + PatchCutOff[p]
 
     # build meshed-grid
-    x = np.arange(-(nx-1)/2,(nx - 1)/2 + 1)*Dx
-    y = np.arange(-(ny-1)/2,(ny- 1)/2 + 1)*Dy
+    x = np.arange(-(nx - 1) / 2, (nx - 1) / 2 + 1) * Dx
+    y = np.arange(-(ny - 1) / 2, (ny - 1) / 2 + 1) * Dy
     X, Y = np.meshgrid(x, y, indexing="ij")
 
     StandDenc = np.zeros((npatch, 1))
@@ -64,7 +66,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
     if npatch > 1:
         # Generate landscape map of patches
         AcF = np.exp(
-            -(1 / L) * (X ** 2 + Y ** 2) ** 0.5
+            -(1 / L) * (X**2 + Y**2) ** 0.5
         )  # regional (patch level) autocorrelation function. Could be replaced by an observed auto-correlation function, or patch type map
         lambda_r = make_can_gen_rand_field(nx, ny, AcF, domain)
         patch = Generate_PatchMap(patchtype, lambda_r, nx, ny, PatchCutOff, npatch)
@@ -170,7 +172,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
 
         vert_lambdap = np.where(lambdap != 0, lambdap - mu + 1, 0)
         # re-scale by mean and variance
-        total_lad = (vert_lambdap[:, :, None] * canopy.lad[None, None, :])
+        total_lad = vert_lambdap[:, :, None] * canopy.lad[None, None, :]
         TotLAIc = np.maximum(0, ((lambdap - mu) * (canopy.sig_lai / std) + canopy.avg_lai))
         Heightc = np.maximum(0, ((lambdap - mu) * (canopy.sigH / std) + canopy.avgH))
         Bowenc = np.maximum(0, ((lambdap - mu) * (canopy.sig_bowen / std) + canopy.bowen_ratio))
@@ -186,9 +188,18 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
     canopy.CSProfile = canopy.CSProfile.T
     canopy.LAD = canopy.LAD.T
     canopy.zcm = canopy.zcm.T
-    
-    
-    ds = convert_to_xarray(TotLAIc, Heightc, patch, TotFluxc, DBHc, total_lad, x, y, zlad, )
+
+    ds = convert_to_xarray(
+        TotLAIc,
+        Heightc,
+        patch,
+        TotFluxc,
+        DBHc,
+        total_lad,
+        x,
+        y,
+        zlad,
+    )
 
     return ds
 
@@ -196,17 +207,19 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
 def convert_to_xarray(lai, height, patch, flux, DBHc, total_lad, x, y, zlad):
     lai_ = xr.DataArray(
         data=lai,
-        dims=["x", "y"], 
+        dims=["x", "y"],
         coords=dict(
             x=x,
             y=y,
         ),
         attrs=dict(
             long_name="Total Lai",
-            units="m^2 / m^2",))
+            units="m^2 / m^2",
+        ),
+    )
     lad_ = xr.DataArray(
         data=total_lad.T,
-        dims=["zlad", "y", "x"], 
+        dims=["zlad", "y", "x"],
         coords=dict(
             zlad=zlad,
             y=y,
@@ -214,48 +227,56 @@ def convert_to_xarray(lai, height, patch, flux, DBHc, total_lad, x, y, zlad):
         ),
         attrs=dict(
             long_name="leaf area density",
-            units="m2/m3",))
+            units="m2/m3",
+        ),
+    )
     height_ = xr.DataArray(
         data=height,
-        dims=["x", "y"], 
+        dims=["x", "y"],
         coords=dict(
             x=x,
             y=y,
         ),
         attrs=dict(
             long_name="Total height",
-            units="m",))
+            units="m",
+        ),
+    )
     patch_ = xr.DataArray(
         data=patch,
-        dims=["x", "y"], 
+        dims=["x", "y"],
         coords=dict(
             x=x,
             y=y,
         ),
         attrs=dict(
-            long_name="patch categories",))
+            long_name="patch categories",
+        ),
+    )
     flux_ = xr.DataArray(
         data=flux,
-        dims=["x", "y"], 
+        dims=["x", "y"],
         coords=dict(
             x=x,
             y=y,
         ),
-        attrs=dict(
-            long_name="Total flux"))
+        attrs=dict(long_name="Total flux"),
+    )
     DBHc_ = xr.DataArray(
         data=DBHc,
-        dims=["x", "y"], 
+        dims=["x", "y"],
         coords=dict(
             x=x,
             y=y,
         ),
         attrs=dict(
             long_name="Stem diameter and breast height",
-            units="m",))
+            units="m",
+        ),
+    )
     ds = xr.Dataset(dict(lai=lai_, lad=lad_, height=height_, patch=patch_, flux=flux_, DBHc=DBHc_))
     return ds
-    
+
 
 if __name__ == "__main__":
     generate_canopy()
