@@ -12,8 +12,7 @@ from .utils import (
 )
 
 
-def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, mean_lai: float | np.ndarray = 2):
-    zlad = zlad if zlad is not None else np.arange(0, 8, 3)
+def generate_canopy(domain: np.ndarray, dz: float = 3, mean_lai: float | np.ndarray = 2, h: float = 20):
 
     nx, ny, *_ = domain.shape
     # nx = 250 # #grid points east-west
@@ -101,7 +100,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
 
         # generate a random canopy field for each patch type
         for z in range(npatch):
-            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy, mean_lai, zlad, dz)
+            canopy = ForestCanopy_data(patchtype[z], nx, Dx, ny, Dy, mean_lai, dz, h)
             (
                 CSProf[z, :],
                 HDBHpar[z, :],
@@ -162,7 +161,7 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
 
     else:
         patch = np.ones((nx, ny))
-        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy, mean_lai, zlad, dz)
+        canopy = ForestCanopy_data(patchtype[0], nx, Dx, ny, Dy, mean_lai, dz, h)
         StandDenc[0] = canopy.stand_density
         HDBHpar[0, :] = canopy.HDBHpar
         lambdap = make_can_gen_rand_field(nx, ny, canopy.AcF, domain)
@@ -188,6 +187,11 @@ def generate_canopy(domain: np.ndarray, zlad: np.ndarray = None, dz: float = 3, 
     canopy.CSProfile = canopy.CSProfile.T
     canopy.LAD = canopy.LAD.T
     canopy.zcm = canopy.zcm.T
+
+    zlad = np.arange(dz, h, dz, dtype=float)
+    zlad = np.insert(zlad, 0, dz/2)
+    if zlad.size != canopy.lad.size:
+        zlad = np.append(zlad, h)
 
     ds = convert_to_xarray(
         TotLAIc,

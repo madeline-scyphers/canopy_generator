@@ -6,6 +6,45 @@ from scipy import interpolate
 from .utils import calculate_autocorrelation_function
 
 
+def calc_LAD_vertical(LADnorm: np.ndarray, z_h_LADnorm: np.ndarray, tot_LAI_crown, dz, h):
+    """
+    Creates vertical leaf area distribution.
+
+    Parameters
+    ----------
+    LADnorm : np.ndarray
+        Vertical gradient of normalized LAD [unitless]
+    z_h_LADnorm : np.ndarray
+        z/h for LAD [unitless: m/m]
+    tot_LAI_crown : float
+        crown-level LAI [m2_leaf m-2_crown]
+    dz : float
+        Vertical discretization interval [m]
+    h : float
+        Canopy height [m]
+    Returns
+    -------
+    LAD: np.ndarray
+        Leaf area density on new vertical grid [m2leaf m-2crown m-1stem]
+    """
+    z_LAD = z_h_LADnorm * h  # Heights for LAD points
+    dz_LAD = z_LAD[1] - z_LAD[0]
+    zmin = 1
+    z = np.arange(zmin, h, dz)  # New array for vertical resolution
+
+    # Calculate LAD
+    LAD = LADnorm * tot_LAI_crown / dz_LAD  # [m2leaf m-2crown m-1stem]
+
+    # Interpolate LAD to new vertical resolution
+    f = interpolate.interp1d(z_LAD, LAD, bounds_error=False, fill_value="extrapolate")
+    LAD_z = f(z)
+
+    # scale so new integrated LAD matches the original total LAI per crown (corrects for interpolation error)
+    LAD_z = LAD_z * tot_LAI_crown / sum(LAD_z * dz)
+
+    return LAD_z
+
+
 @dataclass
 class CanopyType:
     stand_density: int
@@ -41,12 +80,13 @@ class CanopyType:
         self.sig_albedo = self.sig_albedo * (self.sigH / self.sig_control)
         self.sig_bowen = self.sig_bowen * (self.sigH / self.sig_control)
 
-    def set_lad(self, mean_lai, zlad, dz):
-        lad = interpolate.interp1d(np.arange(0, self.LAI.size * dz, dz), self.LAI)(zlad)
-        self.lad = (lad / lad.sum()) * mean_lai
+    def set_lad(self, mean_lai, dz, h):
+        z_h_LADnorm = self.zlai / self.zlai.max()
+        lad = calc_LAD_vertical(self.LAI_norm, z_h_LADnorm, mean_lai, dz, h)
+        self.lad = np.insert(lad, 0, 0)
 
     def normalize_lai(self, canopytopCM, zcm):
-        self.LAI = self.LAI / self.LAI.sum()
+        self.LAI_norm = self.LAI / self.LAI.sum()
         lencm = np.ceil(max(self.zlai) * 100) / canopytopCM
         self.LADcm = interpolate.interp1d((self.zlai / lencm), self.LAI)(zcm)
         self.LAD = self.LADcm / sum(self.LADcm)
@@ -292,7 +332,7 @@ duke_hardwood_spring = CanopyType(
 canopy_map = {1: duke_loblolly_pine, 2: grass_pitch, 3: duke_hardwood_winter, 4: duke_hardwood_spring}
 
 
-def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
+def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, dz, h) -> CanopyType:
     """
     [CSProfile, LADcm,zcm, avg, avgH, sig, sigH, StandDencity, AcFp]=ForestCanopy_data(ptype,canopytopCM, nx, Dx, ny, Dy)
 
@@ -329,5 +369,5 @@ def ForestCanopy_data(ptype, nx, Dx, ny, Dy, mean_lai, zlad, dz) -> CanopyType:
     canopy_type.normalize_lai(canopytopCM=canopytopCM, zcm=zcm)
     canopy_type.calculate_autocorrelation_function(nx=nx, ny=ny, Dx=Dx, Dy=Dy)
     canopy_type.calculate_csprofile(canopytopCM=canopytopCM, zcm=zcm)
-    canopy_type.set_lad(mean_lai, zlad, dz)
+    canopy_type.set_lad(mean_lai, dz, h)
     return canopy_type
