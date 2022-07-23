@@ -188,10 +188,9 @@ def generate_canopy(domain: np.ndarray, dz: float = 3, mean_lai: float | np.ndar
     canopy.LAD = canopy.LAD.T
     canopy.zcm = canopy.zcm.T
 
-    zlad = np.arange(dz, h, dz, dtype=float)
-    zlad = np.insert(zlad, 0, dz/2)
+    zlad = np.arange(dz / 2, h, dz, dtype=float)
     if zlad.size != canopy.lad.size:
-        zlad = np.append(zlad, h)
+        zlad = np.append(zlad, zlad[-1] + dz)
 
     ds = convert_to_xarray(
         TotLAIc,
